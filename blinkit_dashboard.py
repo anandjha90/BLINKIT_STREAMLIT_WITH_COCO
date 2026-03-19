@@ -12,17 +12,29 @@ st.set_page_config(
 )
 
 CHART_HEIGHT = 320
-CONNECTION_NAME = os.getenv("SNOWFLAKE_CONNECTION_NAME", "QK61286")
 
 
 @st.cache_resource
 def get_connection():
     try:
-        conn = snowflake.connector.connect(connection_name=CONNECTION_NAME)
-        conn.cursor().execute("USE ROLE ACCOUNTADMIN")
-        conn.cursor().execute("USE WAREHOUSE COMPUTE_WH")
-        conn.cursor().execute("USE DATABASE BLINKIT_DW")
-        conn.cursor().execute("USE SCHEMA RAW")
+        if "snowflake" in st.secrets.get("connections", {}):
+            sf = st.secrets["connections"]["snowflake"]
+            conn = snowflake.connector.connect(
+                account=sf["account"],
+                user=sf["user"],
+                password=sf["password"],
+                warehouse=sf.get("warehouse", "COMPUTE_WH"),
+                database=sf.get("database", "BLINKIT_DW"),
+                schema=sf.get("schema", "RAW"),
+                role=sf.get("role", "ACCOUNTADMIN"),
+            )
+        else:
+            connection_name = os.getenv("SNOWFLAKE_CONNECTION_NAME", "QK61286")
+            conn = snowflake.connector.connect(connection_name=connection_name)
+            conn.cursor().execute("USE ROLE ACCOUNTADMIN")
+            conn.cursor().execute("USE WAREHOUSE COMPUTE_WH")
+            conn.cursor().execute("USE DATABASE BLINKIT_DW")
+            conn.cursor().execute("USE SCHEMA RAW")
         return conn
     except Exception as e:
         st.error(f"Failed to connect to Snowflake: {e}")
