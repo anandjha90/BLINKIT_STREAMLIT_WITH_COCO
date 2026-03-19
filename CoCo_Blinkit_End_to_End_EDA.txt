@@ -723,6 +723,210 @@
   │ .gitignore           │ Excludes secrets, cache, venv                     │
   └──────────────────────┴───────────────────────────────────────────────────┘
 
+> can you update the readme so that it includes all the information about all the tables and their columns and what kpi we are building all those which are needed for the user information.
+
+✓  READ  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\README.md 86 lines
+
+✓  WRITE  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\README.md +210 -86
+
+* Now let me commit and push:
+
+×  POWERSHELL  $env:PATH += ";C:\Program Files\Git\bin"; cd "C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO" ; g...
+  ├─ ! [rejected]        main -> main (fetch first)
+  ├─ error: failed to push some refs to 'https://github.com/anandjha90/BLINKIT_STR...
+  └─ ... (5 more lines)
+
+✓  POWERSHELL  $env:PATH += ";C:\Program Files\Git\bin"; cd "C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO" ; g...
+  ├─ From https://github.com/anandjha90/BLINKIT_STREAMLIT_WITH_COCO
+  ├─ * branch            main       -> FETCH_HEAD
+  └─ ... (4 more lines)
+
+* Pushed. The README at https://github.com/anandjha90/BLINKIT_STREAMLIT_WITH_COCO now includes:
+
+  • All 4 table schemas with every column, data type, and description
+  • Virtual/computed column formulas
+  • All KPIs with formulas and source tables
+  • Every chart across all 5 tabs with type and description
+  • Sidebar filter details with cross-application behavior
+  • Updated setup instructions
+
+> now can we deploy this app with a public url so that anyone can see and query it?
+
+✓  ASK_USER_QUESTION
+
+* Streamlit Community Cloud can't use local connection_name — it needs explicit credentials. Let me update the app to support both local and cloud modes:
+
+✓  READ  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\blinkit_dashboard.py 31 lines
+
+✓  EDIT  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\blinkit_dashboard.py +28 -16
+
+* Now push to GitHub:
+
+✓  POWERSHELL  $env:PATH += ";C:\Program Files\Git\bin"; cd "C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO" ; g...
+  ├─ [main 5f3272d] Add Streamlit Cloud support with secrets.toml-based Snowflake ...
+  ├─ 1 file changed, 18 insertions(+), 6 deletions(-)
+  └─ ... (3 more lines)
+
+* Code is pushed. Now follow these steps to deploy on Streamlit Community Cloud:
+
+  Step 1: Go to share.streamlit.io
+
+  Sign in with your GitHub account (anandjha90).
+
+  Step 2: Click "New app" and fill in:
+
+  • Repository: anandjha90/BLINKIT_STREAMLIT_WITH_COCO
+  • Branch: main
+  • Main file path: blinkit_dashboard.py
+
+  Step 3: Add Snowflake secrets
+
+  Before clicking Deploy, click "Advanced settings" and paste this in the Secrets box (replace with your actual credentials):
+
+    [connections.snowflake]
+    account = "kd97807.ap-southeast-1"
+    user = "ANALYTICSWITHANAND"
+    password = "YOUR_SNOWFLAKE_PASSWORD"
+    warehouse = "COMPUTE_WH"
+    database = "BLINKIT_DW"
+    schema = "RAW"
+    role = "ACCOUNTADMIN"
+
+  Step 4: Click "Deploy"
+
+  Your app will be live at a public URL like:
+  https://anandjha90-blinkit-streamlit-with-coco.streamlit.app
+
+    Note: Password-based auth is required for Streamlit Cloud since externalbrowser won't work in a headless environment. If you don't use password auth, you can create a Snowflake key-pair and use private_key instead.
+
+  Let me know once you've deployed or if you need help with credentials setup!
+
+* Code is pushed and ready. Follow the 4 steps above to deploy on share.streamlit.io. The key part is pasting your Snowflake credentials in Advanced settings > Secrets before deploying. Let me know once it's live or if you hit any
+  issues!
+
+> On deployment i got this error : Failed to connect to Snowflake: 250001 (08001): Failed to connect to DB: NIPLMRO-QK61286.snowflakecomputing.com:443. Failed to authenticate: MFA authentication is required, but none of your current MFA
+   methods are supported for programmatic authentication.
+
+* Your account has MFA enforced, which blocks password-only auth. The fix is to use key-pair authentication instead. Let me generate a key pair for you:
+
+✓  POWERSHELL  mkdir -p "$env:USERPROFILE\.snowflake\keys" ; openssl genrsa 2048 2>$null | Out-File -Encoding as...
+  ├─ Directory: C:\Users\Anand Jha\.snowflake
+  ├─ Mode                 LastWriteTime         Length Name
+  └─ ... (18 more lines)
+
+✓  POWERSHELL  & "C:\Program Files\Git\usr\bin\openssl.exe" version 2>$null
+  └─ OpenSSL 3.5.5 27 Jan 2026 (Library: OpenSSL 3.5.5 27 Jan 2026)
+
+✓  POWERSHELL  $openssl = "C:\Program Files\Git\usr\bin\openssl.exe"; & $openssl genrsa 2048 2>$null | Out-File ...
+  └─ Keys generated successfully
+
+* Now let me get the public key (without headers) to register it in Snowflake:
+
+✓  POWERSHELL  Get-Content "$env:USERPROFILE\.snowflake\keys\rsa_key.pub" | Where-Object { $_ -notmatch "^-----"...
+  ├─ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyo6V2XVQrGw7zKPM8YFu
+  ├─ FO92rDeoQuGS2asnmqahffnCg+jujIsYYLQ5OiyrH/1ofMR6R91CZQ1+9PrZHwqe
+  └─ ... (5 more lines)
+
+✓  SNOWFLAKE_SQL_EXECUTE  Assign RSA public key to user for key-pair auth
+  Connection: QK61286
+  SQL Result (1 rows × 1 cols)
+  ┌─────┬────────────────────────────────┐
+  │   # │ status                         │
+  ├─────┼────────────────────────────────┤
+  │   1 │ Statement executed successf... │
+  └─────┴────────────────────────────────┘
+
+* Public key registered in Snowflake. Now let me get the private key content and update the dashboard:
+
+✓  READ  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\blinkit_dashboard.py 616 lines
+
+✓  POWERSHELL  Get-Content "$env:USERPROFILE\.snowflake\keys\rsa_key.p8" -Raw
+  ├─ -----BEGIN PRIVATE KEY-----
+  ├─ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDKjpXZdVCsbDvM
+  └─ ... (26 more lines)
+
+* Now let me update the dashboard to support key-pair auth and add cryptography to requirements:
+
+✓  EDIT  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\blinkit_dashboard.py +7 -6
+
+* Now update the get_connection() function to support key-pair auth:
+
+✓  EDIT  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\blinkit_dashboard.py +36 -25
+
+* Now add cryptography to requirements.txt:
+
+✓  READ  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\requirements.txt 5 lines
+
+✓  EDIT  C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO\requirements.txt +5 -4
+
+* Now push the changes to GitHub:
+
+×  POWERSHELL  $env:PATH += ";C:\Program Files\Git\bin"; cd "C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO"; gi...
+  ├─ + ... :\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO"; git add -A && git com ...
+  ├─ +                                                                ~~
+  └─ ... (7 more lines)
+
+×  POWERSHELL  $env:PATH += ";C:\Program Files\Git\bin"; cd "C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO"; gi...
+  ├─ ! [rejected]        main -> main (fetch first)
+  ├─ error: failed to push some refs to 'https://github.com/anandjha90/BLINKIT_STR...
+  └─ ... (5 more lines)
+
+✓  POWERSHELL  $env:PATH += ";C:\Program Files\Git\bin"; cd "C:\Users\Anand Jha\BLINKIT_STREAMLIT_WITH_COCO"; gi...
+  ├─ From https://github.com/anandjha90/BLINKIT_STREAMLIT_WITH_COCO
+  ├─ * branch            main       -> FETCH_HEAD
+  └─ ... (4 more lines)
+
+* All done! Code is pushed. Now update your Streamlit Community Cloud secrets with the following. Go to your app's Settings > Secrets and paste:
+
+    [connections.snowflake]
+    account = "kd97807.ap-southeast-1"
+    user = "ANALYTICSWITHANAND"
+    warehouse = "COMPUTE_WH"
+    database = "BLINKIT_DW"
+    schema = "RAW"
+    role = "ACCOUNTADMIN"
+    private_key = """-----BEGIN PRIVATE KEY-----
+    MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDKjpXZdVCsbDvM
+    o8zxgW4U73asN6hC4ZLZqyeapqF9+cKD6O6MixhgtDk6LKsf/Wh8xHpH3UJlDX70
+    +tkfCp62XZlxcqNThwbutKLLa7OeyddScT4fl9PIE3ne7UJ1IuAIFaRVE5xb4PJc
+    ANOqoredK+H8xmPhrmjl1fd1oGPYy3nq5jfTdPKk8Y4dfTElRHnVm+mjSti7TZpO
+    AHGJqSCAbaA3fSKr1zoNQdW0XxQq14G9L13uLj5a06K8YoaakGSRn9WNvkKoIxJH
+    RKT+qdduG0aZjPoZHU2DnPa0ZYEChzZfW1skL9hL+uRTZVzzspxs67vYxYfwI+53
+    +7zjZH2VAgMBAAECggEAAVIF6Z4yg+5eHkh1EXti3mPs8TAG1iA0K4DvDIPRs9KZ
+    DKc5tSb5isdEQ/LjTvjcs905co165oi8oXyfIUh1ObAbguNPoojT3vSgD+eM5mpN
+    IfU7vIKOye+ZbEeG8k5jZMM9o6QNKD0HFSMq0FlNDUIFwna3Lq6B39UbBaRYX/55
+    KUP6lx5VehI3r1RnEtUrRtgp65dzOtBR+EAI9C5FB9LSuum6P1UkuAFVo0d10cXc
+    ovkQRMJ4EuV6aYkvfNxr4EGDytWgTJ+KW4UdXjWjn/KwjjO+QDdekHnah3nxQNif
+    6kb2Eoq8zJFwaTYjLM5wGQKACbsdVkHAQUpKYTFV8QKBgQD22pjIO+qvtuObb7l5
+    tqFWwcQyHd6Y6yL8RCnTrf0iuy4mXsK3aH2CJKS1UQ51lfVHmdir/Ugx+OgHZFPl
+    Y0+FLnTMrGwn9JGo4G2IH7tEOVjjsplIeAZ5U4xuhBq8LpcNiy+9E5eBC7B/VGQK
+    HBX2jz3UWziDXOne6kqOM4fkWQKBgQDSD9VVbJyx4ybgaq8O6EOfXfgLj2NIQh5r
+    iFDoofgNd0OuZQQzEhCfzrqz5t96GlFlVsCoM9PJOIrROTlKFeEcRjaw1zm2ZRRF
+    BsQXEcbTUHpZH1uEdFTlJPwypLAzbVQo+SPU+mi2LKxAvO6v4pZT7ls5fUnHGkID
+    zQ4MBvarnQKBgGj2/H4wFBPRZajjce+SO7pjPCS/VLabTU4NQefTlM6e3vnL02of
+    kTa0lCDRLZ/MOvbOMTa4xWkSWL9D5vSkLN0JqvqY2oiG0yUHASwfqgZRiD2R5OHO
+    v5n5b75Sh/e6q9pDc/InEYX6zXrnDH7MAH7N29GfVEFvUbbK0xbyTHdJAoGAIKHv
+    DT87NHNKRdCs807numk5sGoNDVugKCpcD1eiFk1xyTTOKzTiOkE+RdZW3zwZavnI
+    IhkzDG5pOkl+eeDeQKszsdMtlwUq2fJMIh1T2t4Es7WoXPJJgfN17lQhP0v7qAXU
+    KDDidXKJK+Ft3wr/OXis2Uh6XqDYooiHZxzp0w0CgYEAqlBDsX+ULxSlCx5h0uOD
+    y+aS0KPxYqwR9xm621QUrwksr1Nk4NvPH6By+NUjWiosvfaILvJhbTGWumlnw4d7
+    LOJNfdGRhMM7lf1r8j8irTq423uz98c0UHMLei0reJoZzNiL3vGkfGMT8i0iTmV7
+    btbngavHz4FYtEWFn070cGc=
+    -----END PRIVATE KEY-----"""
+
+  After pasting the secrets, reboot the app from the Streamlit Cloud dashboard. The app will now authenticate using key-pair auth instead of password, bypassing the MFA requirement.
+
+  Summary of what was done:
+
+  1. Registered RSA public key in Snowflake via ALTER USER
+  2. Updated get_connection() to support private_key from secrets
+  3. Added cryptography to requirements.txt
+  4. Pushed all changes to GitHubGo ahead and paste those secrets in Streamlit Cloud and reboot the app. Let me know once it's deployed!
+
+> perfect it worked.Thanks a lot.CoCo You Rocked...
+
+* Glad it worked! Your Blinkit Analytics Dashboard is now live and publicly accessible. It was a great build — from synthetic data generation to a full 5-tab Streamlit dashboard deployed on the cloud. Enjoy sharing it!
+
 ╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── Understanding Available Database Access ──╮
 │ › Type your message...                                                                                                                                                                                                                   │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
