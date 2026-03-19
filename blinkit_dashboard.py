@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 import snowflake.connector
+from cryptography.hazmat.primitives import serialization
 
 st.set_page_config(
     page_title="Blinkit Analytics Dashboard",
@@ -19,15 +20,26 @@ def get_connection():
     try:
         if "snowflake" in st.secrets.get("connections", {}):
             sf = st.secrets["connections"]["snowflake"]
-            conn = snowflake.connector.connect(
+            connect_args = dict(
                 account=sf["account"],
                 user=sf["user"],
-                password=sf["password"],
                 warehouse=sf.get("warehouse", "COMPUTE_WH"),
                 database=sf.get("database", "BLINKIT_DW"),
                 schema=sf.get("schema", "RAW"),
                 role=sf.get("role", "ACCOUNTADMIN"),
             )
+            if "private_key" in sf:
+                p_key = serialization.load_pem_private_key(
+                    sf["private_key"].encode(), password=None
+                )
+                connect_args["private_key"] = p_key.private_bytes(
+                    serialization.Encoding.DER,
+                    serialization.PrivateFormat.PKCS8,
+                    serialization.NoEncryption(),
+                )
+            elif "password" in sf:
+                connect_args["password"] = sf["password"]
+            conn = snowflake.connector.connect(**connect_args)
         else:
             connection_name = os.getenv("SNOWFLAKE_CONNECTION_NAME", "QK61286")
             conn = snowflake.connector.connect(connection_name=connection_name)
