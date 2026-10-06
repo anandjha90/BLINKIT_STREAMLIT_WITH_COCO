@@ -3,37 +3,40 @@
 -- Run this script in Snowflake to create the database, schema,
 -- tables, and load synthetic data.
 -- ============================================================
-
+ 
 CREATE OR REPLACE WAREHOUSE DEMO_WAREHOUSE;
 CREATE OR REPLACE DATABASE DEMO_DATABASE;
 CREATE OR REPLACE SCHEMA DEMO_SCHEMA;
-
+ 
 -- Create Database
 CREATE OR REPLACE DATABASE BLINKIT_DW;
-
+ 
 CREATE DATABASE BLINKIT_DW IF NOT EXISTS
-
+ 
 -- Use Database
 USE DATABASE BLINKIT_DW;
-
+ 
 -- Create Schemas
 CREATE OR REPLACE SCHEMA RAW;
 CREATE OR REPLACE SCHEMA STAGING;
 CREATE OR REPLACE SCHEMA ANALYTICS;
-
+ 
 -- Create Internal Stage
 USE SCHEMA RAW;
-
+ 
 CREATE OR REPLACE STAGE BLINKIT_STAGE
 COMMENT = 'Stage for Blinkit CSV Files';
-
+ 
 CREATE OR REPLACE STAGE blinkit_stage;
-
+ 
+list @blinkit_stage;
+ 
+ 
 COPY INTO blinkit_orders
 FROM @blinkit_stage/blinkit_orders.csv
 FILE_FORMAT = BLINKIT_CSV_FF
-ON_ERROR = 'CONTINUE';
-
+ON_ERROR = 'ABORT_STATEMENT';
+ 
 -- A️ Standard CSV Format (Orders, Marketing, Order Items)
 CREATE OR REPLACE FILE FORMAT BLINKIT_CSV_FF
 TYPE = 'CSV'
@@ -45,8 +48,11 @@ EMPTY_FIELD_AS_NULL = TRUE
 NULL_IF = ('NULL', 'null', '')
 DATE_FORMAT = 'YYYY-MM-DD'
 TIMESTAMP_FORMAT = 'DD-MM-YYYY HH24:MI'
-ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE;
-
+ERROR_ON_COLUMN_COUNT_MISMATCH = TRUE;
+ 
+-- For more details, see: https://docs.snowflake.com/en/sql-reference/sql/copy-into-table
+ 
+ 
 -- ISO Timestamp Format (Delivery Performance)
 CREATE OR REPLACE FILE FORMAT BLINKIT_CSV_ISO_FF
 TYPE = 'CSV'
@@ -56,10 +62,10 @@ FIELD_OPTIONALLY_ENCLOSED_BY = '"'
 TRIM_SPACE = TRUE
 EMPTY_FIELD_AS_NULL = TRUE
 NULL_IF = ('NULL', 'null', '')
-TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS'
+TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI'
 ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE;
-
-CREATE OR REPLACE TABLE RAW.BLINKIT_ORDERS (
+ 
+CREATE OR REPLACE TABLE BLINKIT_DW.RAW.BLINKIT_ORDERS (
     order_id                 NUMBER(12,0) NOT NULL,
     customer_id              NUMBER(12,0) NOT NULL,
     order_date               TIMESTAMP_NTZ,
@@ -72,29 +78,33 @@ CREATE OR REPLACE TABLE RAW.BLINKIT_ORDERS (
     store_id                 NUMBER(12,0),
     CONSTRAINT pk_orders PRIMARY KEY (order_id)
 );
-
-CREATE OR REPLACE TABLE RAW.BLINKIT_ORDER_ITEMS (
+ 
+CREATE OR REPLACE TABLE BLINKIT_DW.RAW.BLINKIT_ORDER_ITEMS (
     order_id        NUMBER(12,0) NOT NULL,
     product_id      NUMBER(12,0) NOT NULL,
     quantity        NUMBER(10,0),
     unit_price      NUMBER(10,2),
-    total_price     NUMBER(12,2) AS (quantity * unit_price),
+    total_price     NUMBER(20,2) AS (quantity * unit_price),
     CONSTRAINT pk_order_items PRIMARY KEY (order_id, product_id)
 );
-
-CREATE OR REPLACE TABLE RAW.BLINKIT_DELIVERY_PERFORMANCE (
+ 
+CREATE OR REPLACE TABLE BLINKIT_DW.RAW.BLINKIT_DELIVERY_PERFORMANCE (
     order_id                NUMBER(12,0) NOT NULL,
     delivery_partner_id     NUMBER(12,0),
-    promised_time           TIMESTAMP_NTZ,
-    actual_time             TIMESTAMP_NTZ,
-    delivery_time_minutes   NUMBER(6,2) 
-        AS (DATEDIFF('minute', promised_time, actual_time)),
+    promised_time           VARCHAR,
+    actual_time             VARCHAR,
+    delivery_time_minutes   NUMBER(18,0) 
+        AS (DATEDIFF('minute',
+                TRY_TO_TIMESTAMP(promised_time, 'DD-MM-YYYY HH24:MI'),
+                TRY_TO_TIMESTAMP(actual_time, 'DD-MM-YYYY HH24:MI'))),
     distance_km             NUMBER(6,2),
     delivery_status         VARCHAR(50),
     reasons_if_delayed      VARCHAR(200),
     CONSTRAINT pk_delivery PRIMARY KEY (order_id)
 );
-
+ 
+ 
+--
 CREATE OR REPLACE TABLE RAW.BLINKIT_MARKETING_PERFORMANCE (
     campaign_id        NUMBER(10,0),
     campaign_name      VARCHAR(200),
@@ -109,42 +119,42 @@ CREATE OR REPLACE TABLE RAW.BLINKIT_MARKETING_PERFORMANCE (
     roas               NUMBER(5,2),
     CONSTRAINT pk_campaign PRIMARY KEY (campaign_id, date)
 );
-
+ 
 COPY INTO RAW.BLINKIT_ORDERS
 FROM @RAW.BLINKIT_STAGE/blinkit_orders.csv
 FILE_FORMAT = BLINKIT_CSV_FF
-ON_ERROR = 'CONTINUE';
-
+ON_ERROR = 'ABORT_STATEMENT';
+ 
 COPY INTO RAW.BLINKIT_ORDER_ITEMS
 FROM @RAW.BLINKIT_STAGE/blinkit_order_items.csv
 FILE_FORMAT = BLINKIT_CSV_FF
-ON_ERROR = 'CONTINUE';
-
+ON_ERROR = 'ABORT_STATEMENT';
+ 
 COPY INTO RAW.BLINKIT_DELIVERY_PERFORMANCE
 FROM @RAW.BLINKIT_STAGE/blinkit_delivery_performance.csv
 FILE_FORMAT = BLINKIT_CSV_ISO_FF
-ON_ERROR = 'CONTINUE';
-
+ON_ERROR = 'ABORT_STATEMENT';
+ 
 COPY INTO RAW.BLINKIT_MARKETING_PERFORMANCE
 FROM @RAW.BLINKIT_STAGE/blinkit_marketing_performance.csv
 FILE_FORMAT = BLINKIT_CSV_FF
-ON_ERROR = 'CONTINUE';
-
+ON_ERROR = 'ABORT_STATEMENT';
+ 
 USE ROLE ACCOUNTADMIN;
 CREATE WAREHOUSE IF NOT EXISTS COMPUTE_WH WAREHOUSE_SIZE = 'XSMALL' AUTO_SUSPEND = 60 AUTO_RESUME = TRUE;
 USE WAREHOUSE COMPUTE_WH;
-
+ 
 -- Database & Schema
 CREATE DATABASE IF NOT EXISTS BLINKIT_DW;
 USE DATABASE BLINKIT_DW;
 CREATE SCHEMA IF NOT EXISTS RAW;
 USE SCHEMA RAW;
-
+ 
 -- ============================================================
 -- Table 1: BLINKIT_ORDERS
 -- ============================================================
-CREATE TABLE IF NOT EXISTS BLINKIT_ORDERS (
-    ORDER_ID         NUMBER(12,0) NOT NULL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS BLINKIT_ORDERS_SYNTHETIC (
+    ORDER_ID         NUMBER(12,0),
     CUSTOMER_ID      NUMBER(12,0),
     ORDER_DATE       TIMESTAMP_NTZ(9),
     PROMISED_DELIVERY_TIME TIMESTAMP_NTZ(9),
@@ -155,7 +165,7 @@ CREATE TABLE IF NOT EXISTS BLINKIT_ORDERS (
     DELIVERY_PARTNER_ID NUMBER(12,0),
     STORE_ID         NUMBER(12,0)
 );
-
+ 
 -- ============================================================
 -- Table 2: BLINKIT_DELIVERY_PERFORMANCE
 -- ============================================================
@@ -169,7 +179,7 @@ CREATE TABLE IF NOT EXISTS BLINKIT_DELIVERY_PERFORMANCE (
     DELIVERY_STATUS      VARCHAR(50),
     REASONS_IF_DELAYED   VARCHAR(200)
 );
-
+ 
 -- ============================================================
 -- Table 3: BLINKIT_ORDER_ITEMS
 -- ============================================================
@@ -181,7 +191,7 @@ CREATE TABLE IF NOT EXISTS BLINKIT_ORDER_ITEMS (
     TOTAL_PRICE NUMBER(12,2) AS (QUANTITY * UNIT_PRICE),
     PRIMARY KEY (ORDER_ID, PRODUCT_ID)
 );
-
+ 
 -- ============================================================
 -- Table 4: BLINKIT_MARKETING_PERFORMANCE
 -- ============================================================
@@ -198,13 +208,14 @@ CREATE TABLE IF NOT EXISTS BLINKIT_MARKETING_PERFORMANCE (
     REVENUE_GENERATED NUMBER(12,2),
     ROAS              NUMBER(6,2)
 );
-
+ 
+select * from BLINKIT_ORDERS_SYNTHETIC ;
 -- ============================================================
 -- Synthetic Data: BLINKIT_ORDERS (5000 rows)
 -- ============================================================
-INSERT INTO BLINKIT_ORDERS (ORDER_ID, CUSTOMER_ID, ORDER_DATE, PROMISED_DELIVERY_TIME, ACTUAL_DELIVERY_TIME, DELIVERY_STATUS, ORDER_TOTAL, PAYMENT_METHOD, DELIVERY_PARTNER_ID, STORE_ID)
+INSERT INTO BLINKIT_ORDERS_SYNTHETIC (ORDER_ID, CUSTOMER_ID, ORDER_DATE, PROMISED_DELIVERY_TIME, ACTUAL_DELIVERY_TIME, DELIVERY_STATUS, ORDER_TOTAL, PAYMENT_METHOD, DELIVERY_PARTNER_ID, STORE_ID)
 SELECT
-    ABS(RANDOM()) AS ORDER_ID,
+    MOD(ABS(RANDOM()), 999999999999) AS ORDER_ID,
     UNIFORM(1000000, 99999999, RANDOM()) AS CUSTOMER_ID,
     DATEADD('MINUTE', UNIFORM(0, 525600, RANDOM()), '2023-10-01'::TIMESTAMP) AS ORDER_DATE,
     DATEADD('MINUTE', UNIFORM(10, 30, RANDOM()), ORDER_DATE) AS PROMISED_DELIVERY_TIME,
@@ -219,7 +230,7 @@ SELECT
     UNIFORM(10000, 99999, RANDOM()) AS DELIVERY_PARTNER_ID,
     UNIFORM(1000, 9999, RANDOM()) AS STORE_ID
 FROM TABLE(GENERATOR(ROWCOUNT => 5000));
-
+ 
 -- ============================================================
 -- Synthetic Data: BLINKIT_DELIVERY_PERFORMANCE (1000 rows)
 -- ============================================================
@@ -250,7 +261,7 @@ SELECT ORDER_ID, DELIVERY_PARTNER_ID, PROMISED_TIME, ACTUAL_TIME,
         ELSE NULL
     END AS REASONS_IF_DELAYED
 FROM order_base;
-
+ 
 -- ============================================================
 -- Synthetic Data: BLINKIT_ORDER_ITEMS (1000 rows)
 -- ============================================================
@@ -269,7 +280,7 @@ SELECT ORDER_ID,
         WHEN 5 THEN UNIFORM(15.0::FLOAT, 99.0::FLOAT, RANDOM())
     END, 2) AS UNIT_PRICE
 FROM order_ids;
-
+ 
 -- ============================================================
 -- Synthetic Data: BLINKIT_MARKETING_PERFORMANCE (5400 rows)
 -- ============================================================
